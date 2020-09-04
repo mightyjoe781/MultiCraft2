@@ -1,11 +1,11 @@
 /*
-Minetest
+MultiCraft
 Copyright (C) 2014-2020 MoNTE48, Maksim Gamarnik <MoNTE48@mail.ua>
 Copyright (C) 2014-2020 ubulem,  Bektur Mambetov <berkut87@gmail.com>
 
 This program is free software; you can redistribute it and/or modify
 it under the terms of the GNU Lesser General Public License as published by
-the Free Software Foundation; either version 2.1 of the License, or
+the Free Software Foundation; either version 3.0 of the License, or
 (at your option) any later version.
 
 This program is distributed in the hope that it will be useful,
@@ -18,7 +18,7 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-package net.minetest.minetest;
+package com.multicraft.game;
 
 import android.app.IntentService;
 import android.app.Notification;
@@ -26,39 +26,42 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.content.Context;
 import android.content.Intent;
-import android.os.Build;
-import android.os.Environment;
-import android.widget.Toast;
+
+import com.bugsnag.android.Bugsnag;
 
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
+import java.util.Objects;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
+import static com.multicraft.game.MainActivity.zipLocations;
+import static com.multicraft.game.helpers.ApiLevelHelper.isOreo;
+
 public class UnzipService extends IntentService {
-	public static final String ACTION_UPDATE = "net.minetest.minetest.UPDATE";
-	public static final String ACTION_PROGRESS = "net.minetest.minetest.PROGRESS";
-	public static final String ACTION_FAILURE = "net.minetest.minetest.FAILURE";
-	public static final String EXTRA_KEY_IN_FILE = "file";
-	public static final int SUCCESS = -1;
-	public static final int FAILURE = -2;
+	public static final String ACTION_UPDATE = "com.multicraft.game.UPDATE";
+	public static final String EXTRA_KEY_IN_FILE = "com.multicraft.game.file";
+	public static final String ACTION_PROGRESS = "com.multicraft.game.progress";
+	public static final String ACTION_FAILURE = "com.multicraft.game.failure";
+	public static final int UNZIP_SUCCESS = -1;
+	public static final int UNZIP_FAILURE = -2;
 	private final int id = 1;
 	private NotificationManager mNotifyManager;
-	private boolean isSuccess = true;
 	private String failureMessage;
+	private boolean isSuccess = true;
 
 	public UnzipService() {
-		super("net.minetest.minetest.UnzipService");
+		super("com.multicraft.game.UnzipService");
 	}
 
-	private void isDir(String dir, String location) {
-		File f = new File(location, dir);
-		if (!f.isDirectory())
-			f.mkdirs();
+	private void isDir(String dir, String unzipLocation) {
+		File f = new File(unzipLocation + dir);
+		if (!f.mkdirs() && !f.isDirectory())
+			Bugsnag.leaveBreadcrumb(f + " (destination) folder was not created");
 	}
 
 	@Override
@@ -68,13 +71,14 @@ public class UnzipService extends IntentService {
 	}
 
 	private void createNotification() {
-		String name = "net.minetest.minetest";
-		String channelId = "Minetest channel";
-		String description = "notifications from Minetest";
+		// There are hardcoding only for show it's just strings
+		String name = "com.multicraft.game";
+		String channelId = "MultiCraft channel"; // The user-visible name of the channel.
+		String description = "notifications from MultiCraft"; // The user-visible description of the channel.
 		Notification.Builder builder;
 		if (mNotifyManager == null)
 			mNotifyManager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+		if (isOreo()) {
 			int importance = NotificationManager.IMPORTANCE_LOW;
 			NotificationChannel mChannel = null;
 			if (mNotifyManager != null)
@@ -89,44 +93,45 @@ public class UnzipService extends IntentService {
 				mNotifyManager.createNotificationChannel(mChannel);
 			}
 			builder = new Notification.Builder(this, channelId);
-		} else {
+		} else
 			builder = new Notification.Builder(this);
-		}
 		builder.setContentTitle(getString(R.string.notification_title))
-				.setSmallIcon(R.mipmap.ic_launcher)
-				.setContentText(getString(R.string.notification_description));
+				.setContentText(getString(R.string.notification_description))
+				.setSmallIcon(R.drawable.update);
 		mNotifyManager.notify(id, builder.build());
 	}
 
 	private void unzip(Intent intent) {
-		String zip = intent.getStringExtra(EXTRA_KEY_IN_FILE);
-		isDir("Minetest", Environment.getExternalStorageDirectory().toString());
-		String location = Environment.getExternalStorageDirectory() + File.separator + "Minetest" + File.separator;
+		String[] zips = intent.getStringArrayExtra(EXTRA_KEY_IN_FILE);
 		int per = 0;
-		int size = getSummarySize(zip);
-		File zipFile = new File(zip);
-		int readLen;
+		int size = getSummarySize(Objects.requireNonNull(zips));
 		byte[] readBuffer = new byte[8192];
-		try (FileInputStream fileInputStream = new FileInputStream(zipFile);
-		     ZipInputStream zipInputStream = new ZipInputStream(fileInputStream)) {
+		for (String zip : zips) {
+			File zipFile = new File(zip);
 			ZipEntry ze;
-			while ((ze = zipInputStream.getNextEntry()) != null) {
-				if (ze.isDirectory()) {
-					++per;
-					isDir(ze.getName(), location);
-				} else {
-					publishProgress(100 * ++per / size);
-					try (OutputStream outputStream = new FileOutputStream(location + ze.getName())) {
-						while ((readLen = zipInputStream.read(readBuffer)) != -1) {
-							outputStream.write(readBuffer, 0, readLen);
+			int readLen;
+			try (FileInputStream fileInputStream = new FileInputStream(zipFile);
+			     ZipInputStream zipInputStream = new ZipInputStream(fileInputStream)) {
+				while ((ze = zipInputStream.getNextEntry()) != null) {
+					String fileName = ze.getName();
+					if (ze.isDirectory()) {
+						++per;
+						isDir(fileName, zipLocations.get(zip));
+					} else {
+						File extractedFile = new File(zipLocations.get(zip) + fileName);
+						publishProgress(100 * ++per / size);
+						try (OutputStream outputStream = new FileOutputStream(extractedFile)) {
+							while ((readLen = zipInputStream.read(readBuffer)) != -1) {
+								outputStream.write(readBuffer, 0, readLen);
+							}
 						}
 					}
 				}
-				zipFile.delete();
+			} catch (IOException e) {
+				Bugsnag.notify(e);
+				failureMessage = e.getLocalizedMessage();
+				isSuccess = false;
 			}
-		} catch (IOException e) {
-			isSuccess = false;
-			failureMessage = e.getLocalizedMessage();
 		}
 	}
 
@@ -137,13 +142,15 @@ public class UnzipService extends IntentService {
 		sendBroadcast(intentUpdate);
 	}
 
-	private int getSummarySize(String zip) {
+	private int getSummarySize(String[] zips) {
 		int size = 0;
-		try {
-			ZipFile zipSize = new ZipFile(zip);
-			size += zipSize.size();
-		} catch (IOException e) {
-			Toast.makeText(this, e.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+		for (String z : zips) {
+			try {
+				ZipFile zipFile = new ZipFile(z);
+				size += zipFile.size();
+			} catch (IOException e) {
+				Bugsnag.notify(e);
+			}
 		}
 		return size;
 	}
@@ -152,6 +159,6 @@ public class UnzipService extends IntentService {
 	public void onDestroy() {
 		super.onDestroy();
 		mNotifyManager.cancel(id);
-		publishProgress(isSuccess ? SUCCESS : FAILURE);
+		publishProgress(isSuccess ? UNZIP_SUCCESS : UNZIP_FAILURE);
 	}
 }
