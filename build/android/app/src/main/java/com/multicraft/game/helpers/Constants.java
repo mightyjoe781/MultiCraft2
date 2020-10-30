@@ -30,7 +30,6 @@ public class Constants {
 	public static final String FILES = "Files.zip";
 	public static final String WORLDS = "worlds.zip";
 	public static final String GAMES = "games.zip";
-	public static final String CACHE = "cache.zip";
 	public static final int versionCode = BuildConfig.VERSION_CODE;
 	public static final String versionName = BuildConfig.VERSION_NAME;
 	public static final String appPackage = BuildConfig.APPLICATION_ID;

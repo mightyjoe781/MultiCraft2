@@ -28,7 +28,6 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.Drawable;
-import android.os.Build;
 import android.view.View;
 
 import com.bugsnag.android.Bugsnag;
@@ -52,8 +51,6 @@ import okhttp3.Response;
 
 import static android.os.Environment.getExternalStorageDirectory;
 import static com.multicraft.game.helpers.ApiLevelHelper.isKitkat;
-import static com.multicraft.game.helpers.ApiLevelHelper.isLollipop;
-import static com.multicraft.game.helpers.Constants.CACHE;
 import static com.multicraft.game.helpers.Constants.FILES;
 import static com.multicraft.game.helpers.Constants.GAMES;
 import static com.multicraft.game.helpers.Constants.WORLDS;
@@ -94,10 +91,6 @@ public class Utilities {
 			if (file != null && file.exists())
 				FileUtils.deleteQuietly(file);
 		}
-	}
-
-	public static boolean isArm64() {
-		return isLollipop() && (Build.SUPPORTED_64_BIT_ABIS.length > 0);
 	}
 
 	public static String getStoreUrl() {
@@ -165,7 +158,6 @@ public class Utilities {
 				path = context.getFilesDir().toString();
 				break;
 			case WORLDS:
-			case CACHE:
 				try {
 					path = context.getExternalFilesDir(null).toString();
 				} catch (NullPointerException e) {
@@ -182,7 +174,7 @@ public class Utilities {
 		try {
 			return new ArrayList<>(Arrays.asList(context.getAssets().list("data")));
 		} catch (IOException e) {
-			return new ArrayList<>(Arrays.asList(FILES, GAMES, WORLDS, CACHE));
+			return new ArrayList<>(Arrays.asList(FILES, GAMES, WORLDS));
 		}
 	}
 }

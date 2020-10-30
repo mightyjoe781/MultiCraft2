@@ -87,7 +87,6 @@ import static com.multicraft.game.helpers.ApiLevelHelper.isAndroidQ;
 import static com.multicraft.game.helpers.ApiLevelHelper.isJellyBeanMR1;
 import static com.multicraft.game.helpers.ApiLevelHelper.isLollipop;
 import static com.multicraft.game.helpers.ApiLevelHelper.isOreo;
-import static com.multicraft.game.helpers.Constants.CACHE;
 import static com.multicraft.game.helpers.Constants.FILES;
 import static com.multicraft.game.helpers.Constants.GAMES;
 import static com.multicraft.game.helpers.Constants.NO_SPACE_LEFT;
@@ -102,7 +101,6 @@ import static com.multicraft.game.helpers.Utilities.addShortcut;
 import static com.multicraft.game.helpers.Utilities.deleteFiles;
 import static com.multicraft.game.helpers.Utilities.getIcon;
 import static com.multicraft.game.helpers.Utilities.getZipsFromAssets;
-import static com.multicraft.game.helpers.Utilities.isArm64;
 import static com.multicraft.game.helpers.Utilities.makeFullScreen;
 
 public class MainActivity extends AppCompatActivity implements CallBackListener {
@@ -138,7 +136,7 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 				Toast.makeText(MainActivity.this, intent.getStringExtra(ACTION_FAILURE), Toast.LENGTH_LONG).show();
 				showRestartDialog("");
 			} else if (progress == UNZIP_SUCCESS) {
-				deleteFiles(Arrays.asList(FILES, WORLDS, GAMES, CACHE), getCacheDir().toString());
+				deleteFiles(Arrays.asList(FILES, WORLDS, GAMES), getCacheDir().toString());
 				runGame();
 			}
 		}
@@ -388,7 +386,6 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 	private void startCopy(boolean isAll) {
 		zips = getZipsFromAssets(this);
 		if (!isAll) zips.remove(WORLDS);
-		if (!isArm64()) zips.remove(CACHE);
 		copySub = Completable.fromAction(() -> runOnUiThread(() -> copyAssets(zips)))
 				.subscribeOn(Schedulers.io())
 				.observeOn(AndroidSchedulers.mainThread())
