@@ -28,36 +28,27 @@ import android.text.Html;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.preference.PreferenceManager;
 
-import com.bugsnag.android.Bugsnag;
-import com.multicraft.game.BuildConfig;
+import com.google.gson.Gson;
 import com.multicraft.game.JsonSettings;
 
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
-import org.json.JSONTokener;
 import org.xml.sax.XMLReader;
 
-import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.List;
 import java.util.Locale;
 
+import static com.multicraft.game.helpers.Constants.versionCode;
+import static com.multicraft.game.helpers.PreferencesHelper.ADS_DELAY;
+import static com.multicraft.game.helpers.PreferencesHelper.ADS_ENABLE;
+import static com.multicraft.game.helpers.PreferencesHelper.ADS_REPEAT;
+import static com.multicraft.game.helpers.PreferencesHelper.TAG_RATE_MIN_VERSION_CODE;
+import static com.multicraft.game.helpers.PreferencesHelper.TAG_REVIEW_ENABLE;
 import static com.multicraft.game.helpers.Utilities.getStoreUrl;
 
 public class VersionManagerHelper {
-	private static final String JSON_VERSION_CODE = "version_code";
-	private static final String JSON_VERSION_CODE_BAD = "version_code_bad";
-	private static final String JSON_PACKAGE = "package";
-	private static final String JSON_CONTENT_RU = "content_ru";
-	private static final String JSON_CONTENT_EN = "content_en";
-	private static final String JSON_ADS_DELAY = "ads_delay";
-	private static final String JSON_ADS_REPEAT = "ads_repeat";
-	private static final String JSON_ADS_ENABLE = "ads_enable";
 	private final CustomTagHandler customTagHandler;
 	private final String PREF_REMINDER_TIME = "w.reminder.time";
 	private final AppCompatActivity activity;
-	private final int versionCode = BuildConfig.VERSION_CODE;
 	private String message, updateUrl;
 
 	public VersionManagerHelper(AppCompatActivity act) {
@@ -75,46 +66,28 @@ public class VersionManagerHelper {
 		return badVersions.contains(versionCode);
 	}
 
-	private List<Integer> convertToList(JSONArray badVersions) throws JSONException {
-		List<Integer> badVersionList = new ArrayList<>();
-		if (badVersions != null) {
-			for (int i = 0; i < badVersions.length(); i++)
-				badVersionList.add(badVersions.getInt(i));
-		}
-		return badVersionList;
+	private JsonSettings parseJson(String result) {
+		JsonSettings settings = new Gson().fromJson(result, JsonSettings.class);
+		String lang = Locale.getDefault().getLanguage();
+		String content = lang.equals("ru") ? settings.getContentRus() : settings.getContentEng();
+		setMessage(content);
+		setUpdateUrl("market://details?id=" + settings.getPackageName());
+		savePrefSettings(settings);
+		return settings;
 	}
 
-	private JsonSettings parseJson(String result) throws JSONException {
-		JsonSettings jsonSettings = new JsonSettings();
+	private void savePrefSettings(JsonSettings settings) {
 		PreferencesHelper pf = PreferencesHelper.getInstance(activity);
-		if (!result.startsWith("{")) // for response who append with unknown char
-			result = result.substring(1);
-		String mResult = result;
-		// json format from server:
-		JSONObject json = new JSONObject(new JSONTokener(mResult));
-		jsonSettings.setVersionCode(json.getInt(JSON_VERSION_CODE));
-		jsonSettings.setBadVersionCodes(convertToList(json.getJSONArray(JSON_VERSION_CODE_BAD)));
-		String lang = Locale.getDefault().getLanguage();
-		String content = lang.equals("ru") ? JSON_CONTENT_RU : JSON_CONTENT_EN;
-		jsonSettings.setContent(json.getString(content));
-		setMessage(jsonSettings.getContent());
-		jsonSettings.setPackageName(json.getString(JSON_PACKAGE));
-		setUpdateUrl("market://details?id=" + jsonSettings.getPackageName());
-		jsonSettings.setAdsDelay(json.getInt(JSON_ADS_DELAY));
-		jsonSettings.setAdsRepeat(json.getInt(JSON_ADS_REPEAT));
-		jsonSettings.setAdsEnabled(json.getBoolean(JSON_ADS_ENABLE));
-		pf.saveAdsSettings(jsonSettings);
-		return jsonSettings;
+		pf.saveSettings(TAG_RATE_MIN_VERSION_CODE, settings.getRateMinVersionCode());
+		pf.saveSettings(TAG_REVIEW_ENABLE, settings.isReviewEnabled());
+		pf.saveSettings(ADS_DELAY, settings.getAdsDelay());
+		pf.saveSettings(ADS_REPEAT, settings.getAdsRepeat());
+		pf.saveSettings(ADS_ENABLE, settings.isAdsEnabled());
 	}
 
 	public boolean isShow(String result) {
 		if (result.equals("{}")) return false;
-		JsonSettings jsonSettings;
-		try {
-			jsonSettings = parseJson(result);
-		} catch (JSONException e) {
-			return false;
-		}
+		JsonSettings jsonSettings = parseJson(result);
 		return (versionCode < jsonSettings.getVersionCode()) ||
 				isBadVersion(jsonSettings.getBadVersionCodes());
 	}
@@ -142,7 +115,7 @@ public class VersionManagerHelper {
 				Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
 				activity.startActivity(intent);
 			} catch (Exception e) {
-				Bugsnag.notify(e);
+				// nothing
 			}
 		}
 	}

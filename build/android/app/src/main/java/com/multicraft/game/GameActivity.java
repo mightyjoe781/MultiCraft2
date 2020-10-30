@@ -23,15 +23,14 @@ package com.multicraft.game;
 import android.app.ActivityManager;
 import android.app.NativeActivity;
 import android.content.Context;
-import android.content.Intent;
 import android.content.res.Configuration;
-import android.net.Uri;
+import android.content.res.Resources;
 import android.os.Bundle;
 import android.text.InputType;
 import android.text.method.LinkMovementMethod;
 import android.view.Gravity;
 import android.view.KeyEvent;
-import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.EditText;
 import android.widget.TextView;
@@ -40,12 +39,11 @@ import androidx.appcompat.app.AlertDialog;
 
 import com.bugsnag.android.Bugsnag;
 import com.multicraft.game.helpers.PreferencesHelper;
+import com.multicraft.game.helpers.RateMeHelper;
 import com.multicraft.game.helpers.Utilities;
 
 import org.json.JSONObject;
 import org.json.JSONTokener;
-
-import java.util.Objects;
 
 import io.reactivex.Completable;
 import io.reactivex.Observable;
@@ -58,7 +56,10 @@ import static com.multicraft.game.helpers.AdManager.initAd;
 import static com.multicraft.game.helpers.AdManager.setAdsCallback;
 import static com.multicraft.game.helpers.AdManager.startAd;
 import static com.multicraft.game.helpers.AdManager.stopAd;
+import static com.multicraft.game.helpers.Constants.versionCode;
 import static com.multicraft.game.helpers.PreferencesHelper.IS_ASK_CONSENT;
+import static com.multicraft.game.helpers.PreferencesHelper.TAG_EXIT_GAME_COUNT;
+import static com.multicraft.game.helpers.PreferencesHelper.TAG_LAST_RATE_VERSION_CODE;
 import static com.multicraft.game.helpers.PreferencesHelper.getInstance;
 import static com.multicraft.game.helpers.Utilities.getIcon;
 import static com.multicraft.game.helpers.Utilities.makeFullScreen;
@@ -73,8 +74,8 @@ public class GameActivity extends NativeActivity {
 		} catch (IllegalArgumentException i) {
 			Bugsnag.notify(i);
 			System.exit(0);
-		} catch (Error | Exception error) {
-			Bugsnag.notify(error);
+		} catch (Error | Exception e) {
+			Bugsnag.notify(e);
 			System.exit(0);
 		}
 	}
@@ -95,13 +96,14 @@ public class GameActivity extends NativeActivity {
 	public void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		Bundle bundle = getIntent().getExtras();
-		height = bundle != null ? bundle.getInt("height", 0) : getResources().getDisplayMetrics().heightPixels;
-		width = bundle != null ? bundle.getInt("width", 0) : getResources().getDisplayMetrics().widthPixels;
-		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-		hasKeyboard = !(getResources().getConfiguration().hardKeyboardHidden == KEYBOARD_QWERTY);
+		Resources resources = getResources();
+		height = bundle != null ? bundle.getInt("height", 0) : resources.getDisplayMetrics().heightPixels;
+		width = bundle != null ? bundle.getInt("width", 0) : resources.getDisplayMetrics().widthPixels;
+		getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
+		hasKeyboard = !(resources.getConfiguration().hardKeyboardHidden == KEYBOARD_QWERTY);
 		keyboardEvent(hasKeyboard);
 		pf = getInstance(this);
-		RateMe.onStart(this);
+		RateMeHelper.onStart(this);
 		askGdpr();
 	}
 
@@ -149,6 +151,7 @@ public class GameActivity extends NativeActivity {
 		builder.setTitle(getString(R.string.app_name));
 		TextView tv = new TextView(this);
 		tv.setText(R.string.gdpr_main_text);
+		tv.setTypeface(null);
 		tv.setPadding(20, 0, 20, 0);
 		tv.setGravity(Gravity.CENTER);
 		tv.setMovementMethod(LinkMovementMethod.getInstance());
@@ -172,8 +175,9 @@ public class GameActivity extends NativeActivity {
 	}
 
 	private void checkRateDialog() {
-		if (RateMe.shouldShowRateDialog(this)) {
-			runOnUiThread(() -> RateMe.showRateDialog(this));
+		if (RateMeHelper.shouldShowRateDialog()) {
+			pf.saveSettings(TAG_LAST_RATE_VERSION_CODE, versionCode);
+			runOnUiThread(() -> RateMeHelper.showRateDialog(this));
 		}
 	}
 
@@ -230,7 +234,7 @@ public class GameActivity extends NativeActivity {
 		editText.setHint(hint);
 		editText.setText(current);
 		final InputMethodManager imm = (InputMethodManager) getSystemService(INPUT_METHOD_SERVICE);
-		Objects.requireNonNull(imm).toggleSoftInput(InputMethodManager.SHOW_FORCED,
+		imm.toggleSoftInput(InputMethodManager.SHOW_FORCED,
 				InputMethodManager.HIDE_IMPLICIT_ONLY);
 		if (editType == 1)
 			editText.setInputType(InputType.TYPE_CLASS_TEXT |
@@ -253,7 +257,7 @@ public class GameActivity extends NativeActivity {
 		});
 		alertDialog.show();
 		alertDialog.setOnCancelListener(dialog -> {
-			getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+			getWindow().setSoftInputMode(LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 			messageReturnValue = current;
 			messageReturnCode = -1;
 		});
@@ -280,11 +284,6 @@ public class GameActivity extends NativeActivity {
 		return width;
 	}
 
-	public void openURL(String url) {
-		Intent browserIntent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
-		startActivity(browserIntent);
-	}
-
 	public float getMemoryMax() {
 		ActivityManager actManager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
 		ActivityManager.MemoryInfo memInfo = new ActivityManager.MemoryInfo();
@@ -304,10 +303,13 @@ public class GameActivity extends NativeActivity {
 	}
 
 	public void notifyExitGame() {
-		if (isMultiPlayer) {
-			if (pf.isAdsEnable())
-				startAd(this, false, true);
-		} else
-			checkRateDialog();
+		pf.saveSettings(TAG_EXIT_GAME_COUNT, pf.getExitGameCount() + 1);
+		if (!isFinishing()) {
+			if (isMultiPlayer) {
+				if (pf.isAdsEnable())
+					startAd(this, false, true);
+			} else
+				checkRateDialog();
+		}
 	}
 }

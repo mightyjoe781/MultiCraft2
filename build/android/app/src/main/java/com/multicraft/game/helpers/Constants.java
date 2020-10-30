@@ -18,26 +18,21 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301 USA.
 */
 
-package com.multicraft.game;
+package com.multicraft.game.helpers;
 
-import android.content.Context;
-import android.view.KeyEvent;
-import android.view.inputmethod.InputMethodManager;
+import com.multicraft.game.BuildConfig;
 
-import androidx.appcompat.widget.AppCompatEditText;
-
-public class CustomEditText extends AppCompatEditText {
-	public CustomEditText(Context context) {
-		super(context);
-	}
-
-	@Override
-	public boolean onKeyPreIme(int keyCode, KeyEvent event) {
-		if (keyCode == KeyEvent.KEYCODE_BACK) {
-			InputMethodManager mgr = (InputMethodManager)
-					getContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-			mgr.hideSoftInputFromWindow(this.getWindowToken(), 0);
-		}
-		return false;
-	}
+public class Constants {
+	public static final int REQUEST_CONNECTION = 104;
+	public static final int REQUEST_UPDATE = 102;
+	public static final int SESSION_COUNT = 5;
+	public static final String NO_SPACE_LEFT = "ENOSPC";
+	public static final String FILES = "Files.zip";
+	public static final String WORLDS = "worlds.zip";
+	public static final String GAMES = "games.zip";
+	public static final String CACHE = "cache.zip";
+	public static final int versionCode = BuildConfig.VERSION_CODE;
+	public static final String versionName = BuildConfig.VERSION_NAME;
+	public static final String appPackage = BuildConfig.APPLICATION_ID;
+	public static final String UPDATE_LINK = "http://updates.multicraft.world/Android.json";
 }

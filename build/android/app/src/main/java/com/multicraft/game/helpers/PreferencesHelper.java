@@ -23,19 +23,22 @@ package com.multicraft.game.helpers;
 import android.content.Context;
 import android.content.SharedPreferences;
 
-import com.multicraft.game.JsonSettings;
-
 public class PreferencesHelper {
 	public static final String TAG_SHORTCUT_EXIST = "createShortcut";
 	public static final String TAG_BUILD_NUMBER = "buildNumber";
 	public static final String TAG_LAUNCH_TIMES = "launchTimes";
 	public static final String TAG_COPY_OLD_WORLDS = "copyOldWorlds";
+	public static final String TAG_LAST_RATE_VERSION_CODE = "lastRateVersionCode";
+	public static final String TAG_RATE_MIN_VERSION_CODE = "rateMinVersionCode";
+	public static final String TAG_EXIT_GAME_COUNT = "exitGameCount";
+	public static final String TAG_REVIEW_ENABLE = "reviewEnable";
+	public static final String TAG_OPT_OUT = "optOut";
 	public static final String IS_ASK_CONSENT = "isAskConsent";
 	public static final String IS_LOADED = "interstitialLoaded";
 	public static final String RV_LOADED = "rewardedVideoLoaded";
-	private static final String ADS_DELAY = "adsDelay";
-	private static final String ADS_REPEAT = "adsRepeat";
-	private static final String ADS_ENABLE = "adsEnable";
+	public static final String ADS_DELAY = "adsDelay";
+	public static final String ADS_REPEAT = "adsRepeat";
+	public static final String ADS_ENABLE = "adsEnable";
 	private static final String SETTINGS = "MultiCraftSettings";
 
 	private static PreferencesHelper instance;
@@ -83,6 +86,18 @@ public class PreferencesHelper {
 		return sharedPreferences.getInt(TAG_LAUNCH_TIMES, 0);
 	}
 
+	public int getLastRateVersionCode() {
+		return sharedPreferences.getInt(TAG_LAST_RATE_VERSION_CODE, 0);
+	}
+
+	public int getRateMinVersionCode() {
+		return sharedPreferences.getInt(TAG_RATE_MIN_VERSION_CODE, 0);
+	}
+
+	public int getExitGameCount() {
+		return sharedPreferences.getInt(TAG_EXIT_GAME_COUNT, 0);
+	}
+
 	public int getAdsDelay() {
 		return sharedPreferences.getInt(ADS_DELAY, 600);
 	}
@@ -95,6 +110,14 @@ public class PreferencesHelper {
 		return sharedPreferences.getBoolean(ADS_ENABLE, true);
 	}
 
+	public boolean isReviewEnable() {
+		return sharedPreferences.getBoolean(TAG_REVIEW_ENABLE, true);
+	}
+
+	public boolean isOptOut() {
+		return sharedPreferences.getBoolean(TAG_OPT_OUT, false);
+	}
+
 	public void saveSettings(String tag, boolean bool) {
 		sharedPreferences.edit().putBoolean(tag, bool).apply();
 	}
@@ -105,13 +128,5 @@ public class PreferencesHelper {
 
 	public void saveSettings(String tag, int value) {
 		sharedPreferences.edit().putInt(tag, value).apply();
-	}
-
-	public void saveAdsSettings(JsonSettings jsonSettings) {
-		int delay = jsonSettings.getAdsDelay();
-		int repeat = jsonSettings.getAdsRepeat();
-		if (delay != -1) saveSettings(ADS_DELAY, delay);
-		if (repeat != -1) saveSettings(ADS_REPEAT, repeat);
-		saveSettings(ADS_ENABLE, jsonSettings.isAdsEnabled());
 	}
 }

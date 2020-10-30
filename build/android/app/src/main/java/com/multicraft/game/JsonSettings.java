@@ -20,69 +20,69 @@ with this program; if not, write to the Free Software Foundation, Inc.,
 
 package com.multicraft.game;
 
+import com.google.gson.annotations.SerializedName;
+
 import java.util.List;
 
 public class JsonSettings {
-	private int versionCode = 0;
+	@SerializedName(value = "version_code")
+	private int versionCode;
+	@SerializedName(value = "version_code_bad")
 	private List<Integer> badVersionCodes;
-	private String packageName, content;
-	private int adsDelay = -1;
-	private int adsRepeat = -1;
-	private boolean adsEnabled = true;
+	@SerializedName(value = "rate_min_version_code")
+	private int rateMinVersionCode;
+	@SerializedName(value = "package")
+	private String packageName;
+	@SerializedName(value = "content_ru")
+	private String contentRus;
+	@SerializedName(value = "content_en")
+	private String contentEng;
+	@SerializedName(value = "ads_delay")
+	private int adsDelay;
+	@SerializedName(value = "ads_repeat")
+	private int adsRepeat;
+	@SerializedName(value = "ads_enable")
+	private boolean adsEnabled;
+	@SerializedName(value = "review_enable")
+	private boolean reviewEnabled;
 
 	public int getVersionCode() {
 		return versionCode;
-	}
-
-	public void setVersionCode(int versionCode) {
-		this.versionCode = versionCode;
 	}
 
 	public List<Integer> getBadVersionCodes() {
 		return badVersionCodes;
 	}
 
-	public void setBadVersionCodes(List<Integer> badVersionCodes) {
-		this.badVersionCodes = badVersionCodes;
+	public int getRateMinVersionCode() {
+		return rateMinVersionCode;
 	}
 
 	public String getPackageName() {
 		return packageName;
 	}
 
-	public void setPackageName(String packageName) {
-		this.packageName = packageName;
-	}
-
-	public String getContent() {
-		return content;
-	}
-
-	public void setContent(String content) {
-		this.content = content;
-	}
-
 	public int getAdsDelay() {
 		return adsDelay;
-	}
-
-	public void setAdsDelay(int adsDelay) {
-		this.adsDelay = adsDelay;
 	}
 
 	public int getAdsRepeat() {
 		return adsRepeat;
 	}
 
-	public void setAdsRepeat(int adsRepeat) {
-		this.adsRepeat = adsRepeat;
-	}
-
 	public boolean isAdsEnabled() {
 		return adsEnabled;
 	}
 
-	public void setAdsEnabled(boolean adsEnabled) {
-		this.adsEnabled = adsEnabled;
+	public boolean isReviewEnabled() {
+		return reviewEnabled;
+	}
+
+	public String getContentRus() {
+		return contentRus;
+	}
+
+	public String getContentEng() {
+		return contentEng;
 	}
 }

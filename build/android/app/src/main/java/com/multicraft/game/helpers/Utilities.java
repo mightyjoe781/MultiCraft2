@@ -32,7 +32,6 @@ import android.os.Build;
 import android.view.View;
 
 import com.bugsnag.android.Bugsnag;
-import com.multicraft.game.BuildConfig;
 import com.multicraft.game.MainActivity;
 import com.multicraft.game.R;
 
@@ -42,21 +41,26 @@ import java.io.File;
 import java.io.IOException;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+import static android.os.Environment.getExternalStorageDirectory;
 import static com.multicraft.game.helpers.ApiLevelHelper.isKitkat;
 import static com.multicraft.game.helpers.ApiLevelHelper.isLollipop;
+import static com.multicraft.game.helpers.Constants.CACHE;
+import static com.multicraft.game.helpers.Constants.FILES;
+import static com.multicraft.game.helpers.Constants.GAMES;
+import static com.multicraft.game.helpers.Constants.WORLDS;
+import static com.multicraft.game.helpers.Constants.appPackage;
 import static com.multicraft.game.helpers.PreferencesHelper.TAG_SHORTCUT_EXIST;
 
 public class Utilities {
-	private static final String appPackage = BuildConfig.APPLICATION_ID;
-
 	private static boolean isInternetAvailable(String url) {
 		try {
 			HttpURLConnection urlc =
@@ -77,21 +81,24 @@ public class Utilities {
 				isInternetAvailable("http://servers.multicraft.world");
 	}
 
-	public static boolean deleteFiles(List<String> files) {
-		boolean result = true;
+	public static void deleteFiles(List<String> files, String path) {
 		for (String f : files) {
-			File file = new File(f);
-			if (file.exists()) {
-				result = result && FileUtils.deleteQuietly(file);
-			}
+			File file = new File(path, f);
+			if (file.exists())
+				FileUtils.deleteQuietly(file);
 		}
-		return result;
+	}
+
+	public static void deleteFiles(List<File> files) {
+		for (File file : files) {
+			if (file != null && file.exists())
+				FileUtils.deleteQuietly(file);
+		}
 	}
 
 	public static boolean isArm64() {
 		return isLollipop() && (Build.SUPPORTED_64_BIT_ABIS.length > 0);
 	}
-
 
 	public static String getStoreUrl() {
 		return "market://details?id=" + appPackage;
@@ -144,10 +151,38 @@ public class Utilities {
 				.build();
 		try {
 			Response response = client.newCall(request).execute();
-			return Objects.requireNonNull(response.body()).string();
+			return response.body().string();
 		} catch (IOException | NullPointerException e) {
-			// nothing
+			return "{}";
 		}
-		return "{}";
+	}
+
+	public static String getLocationByZip(Context context, String zipName) {
+		String path;
+		switch (zipName) {
+			case FILES:
+			case GAMES:
+				path = context.getFilesDir().toString();
+				break;
+			case WORLDS:
+			case CACHE:
+				try {
+					path = context.getExternalFilesDir(null).toString();
+				} catch (NullPointerException e) {
+					path = getExternalStorageDirectory() + "/Android/data/com.multicraft.game/files";
+				}
+				break;
+			default:
+				throw new IllegalArgumentException("No such zip name");
+		}
+		return path;
+	}
+
+	public static ArrayList<String> getZipsFromAssets(Context context) {
+		try {
+			return new ArrayList<>(Arrays.asList(context.getAssets().list("data")));
+		} catch (IOException e) {
+			return new ArrayList<>(Arrays.asList(FILES, GAMES, WORLDS, CACHE));
+		}
 	}
 }

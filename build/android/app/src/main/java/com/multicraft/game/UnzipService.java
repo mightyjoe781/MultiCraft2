@@ -34,13 +34,15 @@ import java.io.FileInputStream;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.util.Objects;
+import java.util.ArrayList;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
 import java.util.zip.ZipInputStream;
 
-import static com.multicraft.game.MainActivity.zipLocations;
 import static com.multicraft.game.helpers.ApiLevelHelper.isOreo;
+import static com.multicraft.game.helpers.Constants.NO_SPACE_LEFT;
+import static com.multicraft.game.helpers.Utilities.getLocationByZip;
+import static com.multicraft.game.helpers.Utilities.getZipsFromAssets;
 
 public class UnzipService extends IntentService {
 	public static final String ACTION_UPDATE = "com.multicraft.game.UPDATE";
@@ -59,7 +61,7 @@ public class UnzipService extends IntentService {
 	}
 
 	private void isDir(String dir, String unzipLocation) {
-		File f = new File(unzipLocation + dir);
+		File f = new File(unzipLocation, dir);
 		if (!f.mkdirs() && !f.isDirectory())
 			Bugsnag.leaveBreadcrumb(f + " (destination) folder was not created");
 	}
@@ -102,12 +104,18 @@ public class UnzipService extends IntentService {
 	}
 
 	private void unzip(Intent intent) {
-		String[] zips = intent.getStringArrayExtra(EXTRA_KEY_IN_FILE);
+		ArrayList<String> zips;
+		if (intent != null)
+			zips = intent.getStringArrayListExtra(EXTRA_KEY_IN_FILE);
+		else
+			zips = getZipsFromAssets(this);
+		String cacheDir = getCacheDir().toString();
 		int per = 0;
-		int size = getSummarySize(Objects.requireNonNull(zips));
+		int size = getSummarySize(zips, cacheDir);
 		byte[] readBuffer = new byte[8192];
 		for (String zip : zips) {
-			File zipFile = new File(zip);
+			String location = getLocationByZip(this, zip);
+			File zipFile = new File(cacheDir, zip);
 			ZipEntry ze;
 			int readLen;
 			try (FileInputStream fileInputStream = new FileInputStream(zipFile);
@@ -116,9 +124,9 @@ public class UnzipService extends IntentService {
 					String fileName = ze.getName();
 					if (ze.isDirectory()) {
 						++per;
-						isDir(fileName, zipLocations.get(zip));
+						isDir(fileName, location);
 					} else {
-						File extractedFile = new File(zipLocations.get(zip) + fileName);
+						File extractedFile = new File(location, fileName);
 						publishProgress(100 * ++per / size);
 						try (OutputStream outputStream = new FileOutputStream(extractedFile)) {
 							while ((readLen = zipInputStream.read(readBuffer)) != -1) {
@@ -128,7 +136,8 @@ public class UnzipService extends IntentService {
 					}
 				}
 			} catch (IOException e) {
-				Bugsnag.notify(e);
+				if (!e.getLocalizedMessage().contains(NO_SPACE_LEFT))
+					Bugsnag.notify(e);
 				failureMessage = e.getLocalizedMessage();
 				isSuccess = false;
 			}
@@ -142,11 +151,11 @@ public class UnzipService extends IntentService {
 		sendBroadcast(intentUpdate);
 	}
 
-	private int getSummarySize(String[] zips) {
+	private int getSummarySize(ArrayList<String> zips, String path) {
 		int size = 0;
 		for (String z : zips) {
 			try {
-				ZipFile zipFile = new ZipFile(z);
+				ZipFile zipFile = new ZipFile(new File(path, z));
 				size += zipFile.size();
 			} catch (IOException e) {
 				Bugsnag.notify(e);

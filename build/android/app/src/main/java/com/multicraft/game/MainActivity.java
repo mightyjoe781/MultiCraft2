@@ -22,7 +22,6 @@ package com.multicraft.game;
 
 import android.app.AlarmManager;
 import android.app.PendingIntent;
-import android.content.ActivityNotFoundException;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -36,11 +35,10 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.LayerDrawable;
 import android.os.Bundle;
-import android.os.Environment;
 import android.text.Html;
 import android.view.Display;
 import android.view.View;
-import android.view.WindowManager;
+import android.view.WindowManager.LayoutParams;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -64,17 +62,14 @@ import com.multicraft.game.helpers.Utilities;
 import com.multicraft.game.helpers.VersionManagerHelper;
 
 import org.apache.commons.io.FileUtils;
-import org.apache.commons.io.FilenameUtils;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
-import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 import io.reactivex.Completable;
@@ -92,21 +87,26 @@ import static com.multicraft.game.helpers.ApiLevelHelper.isAndroidQ;
 import static com.multicraft.game.helpers.ApiLevelHelper.isJellyBeanMR1;
 import static com.multicraft.game.helpers.ApiLevelHelper.isLollipop;
 import static com.multicraft.game.helpers.ApiLevelHelper.isOreo;
+import static com.multicraft.game.helpers.Constants.CACHE;
+import static com.multicraft.game.helpers.Constants.FILES;
+import static com.multicraft.game.helpers.Constants.GAMES;
+import static com.multicraft.game.helpers.Constants.NO_SPACE_LEFT;
+import static com.multicraft.game.helpers.Constants.REQUEST_CONNECTION;
+import static com.multicraft.game.helpers.Constants.REQUEST_UPDATE;
+import static com.multicraft.game.helpers.Constants.UPDATE_LINK;
+import static com.multicraft.game.helpers.Constants.WORLDS;
+import static com.multicraft.game.helpers.Constants.versionName;
 import static com.multicraft.game.helpers.PreferencesHelper.TAG_BUILD_NUMBER;
 import static com.multicraft.game.helpers.PreferencesHelper.TAG_LAUNCH_TIMES;
 import static com.multicraft.game.helpers.Utilities.addShortcut;
 import static com.multicraft.game.helpers.Utilities.deleteFiles;
 import static com.multicraft.game.helpers.Utilities.getIcon;
+import static com.multicraft.game.helpers.Utilities.getZipsFromAssets;
+import static com.multicraft.game.helpers.Utilities.isArm64;
 import static com.multicraft.game.helpers.Utilities.makeFullScreen;
 
 public class MainActivity extends AppCompatActivity implements CallBackListener {
-	public final static Map<String, String> zipLocations = new HashMap<>();
-	private final static String UPDATE_LINK = "http://updates.multicraft.world/Android.json";
-	private final static int REQUEST_CONNECTION = 104;
-	private final static int REQUEST_UPDATE = 102;
-	private static String FILES, WORLDS, GAMES;
-	private final String versionName = BuildConfig.VERSION_NAME;
-	private String unzipLocation, appData;
+	private ArrayList<String> zips;
 	private int height, width;
 	private ProgressBar mProgressBar, mProgressBarIndeterminate;
 	private TextView mLoading;
@@ -138,18 +138,17 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 				Toast.makeText(MainActivity.this, intent.getStringExtra(ACTION_FAILURE), Toast.LENGTH_LONG).show();
 				showRestartDialog("");
 			} else if (progress == UNZIP_SUCCESS) {
-				deleteFiles(Arrays.asList(FILES, WORLDS, GAMES));
+				deleteFiles(Arrays.asList(FILES, WORLDS, GAMES, CACHE), getCacheDir().toString());
 				runGame();
 			}
 		}
 	};
 	private Task<AppUpdateInfo> appUpdateInfoTask;
 
-	// helpful utilities
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
-		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+		getWindow().addFlags(LayoutParams.FLAG_KEEP_SCREEN_ON);
 		setContentView(R.layout.activity_main);
 		pf = PreferencesHelper.getInstance(this);
 		appUpdateManager = AppUpdateManagerFactory.create(this);
@@ -192,41 +191,8 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 		unregisterReceiver(myReceiver);
 	}
 
-	private void initZipLocations() {
-		// sdcard
-		File externalDir = getExternalFilesDir(null); // /sdcard/Android/data/*
-		unzipLocation = externalDir + File.separator;
-		if (externalDir == null) {
-			externalDir = Environment.getExternalStorageDirectory();  // /sdcard
-			unzipLocation = externalDir + File.separator + "Android/data/com.multicraft.game" + File.separator;
-		}
-		// data/data
-		appData = getFilesDir() + File.separator;
-		// cache
-		File cacheDir = getCacheDir(); // /data/data/*/cache
-		String cachePath = cacheDir + File.separator;
-		if (cacheDir == null) {
-			cachePath = unzipLocation + "cache" + File.separator;
-		}
-
-		FILES = cachePath + "Files.zip";
-		WORLDS = cachePath + "worlds.zip";
-		GAMES = cachePath + "games.zip";
-		zipLocations.put(FILES, appData);
-		zipLocations.put(GAMES, appData);
-		zipLocations.put(WORLDS, unzipLocation);
-	}
-
 	private void addLaunchTimes() {
-		int i = pf.getLaunchTimes();
-		i++;
-		pf.saveSettings(TAG_LAUNCH_TIMES, i);
-	}
-
-	private void createDataFolder() throws Exception {
-		File folder = new File(unzipLocation);
-		if (!folder.mkdirs() && !folder.isDirectory())
-			throw new Exception(folder + " (unzipLocation) folder was not created");
+		pf.saveSettings(TAG_LAUNCH_TIMES, pf.getLaunchTimes() + 1);
 	}
 
 	// interface
@@ -305,7 +271,7 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 					appUpdateManager.startUpdateFlowForResult(
 							appUpdateInfo, AppUpdateType.FLEXIBLE, this, REQUEST_UPDATE);
 				} catch (IntentSender.SendIntentException e) {
-					Bugsnag.notify(e);
+					//Bugsnag.notify(e);
 					showUpdateDialog();
 				}
 			} else {
@@ -313,7 +279,7 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 			}
 		});
 		appUpdateInfoTask.addOnFailureListener(e -> {
-			Bugsnag.notify(e);
+			//Bugsnag.notify(e);
 			showUpdateDialog();
 		});
 	}
@@ -359,34 +325,34 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 
 	private void cleanUpOldFiles(boolean isAll) {
 		updateViews(R.string.preparing, View.VISIBLE, View.VISIBLE, View.GONE);
-		List<String> filesList;
+		Completable delObs;
+		File externalStorage = getExternalFilesDir(null);
 		if (isAll)
-			filesList = Collections.singletonList(unzipLocation);
+			delObs = Completable.fromAction(() -> deleteFiles(Collections.singletonList(externalStorage)));
 		else {
-			filesList = Arrays.asList(unzipLocation + "cache",
-					unzipLocation + "builtin", appData + "builtin",
-					unzipLocation + "games", appData + "games",
-					unzipLocation + "debug.txt");
+			List<File> filesList = Arrays.asList(new File(externalStorage, "cache"),
+					new File(getFilesDir(), "builtin"),
+					new File(getFilesDir(), "games"),
+					new File(externalStorage, "debug.txt"));
+			delObs = Completable.fromAction(() -> deleteFiles(filesList));
 		}
-		cleanSub = Observable.fromCallable(() -> deleteFiles(filesList))
-				.subscribeOn(Schedulers.io())
+		cleanSub = delObs.subscribeOn(Schedulers.io())
 				.observeOn(AndroidSchedulers.mainThread())
-				.subscribe(result -> startCopy(isAll));
+				.subscribe(() -> startCopy(isAll));
 	}
 
 	private void checkAppVersion() {
-		if (pf.getBuildNumber().equals(versionName)) {
+		String prefVersion;
+		try {
+			prefVersion = pf.getBuildNumber();
+		} catch (ClassCastException e) {
+			prefVersion = "1";
+		}
+		if (prefVersion.equals(versionName)) {
 			mProgressBarIndeterminate.setVisibility(View.VISIBLE);
 			runGame();
 		} else {
-			initZipLocations();
-			try {
-				createDataFolder();
-			} catch (Exception e) {
-				Bugsnag.notify(e);
-				showRestartDialog("");
-			}
-			cleanUpOldFiles(pf.getBuildNumber().equals("0"));
+			cleanUpOldFiles(prefVersion.equals("0"));
 		}
 	}
 
@@ -420,41 +386,40 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 	}
 
 	private void startCopy(boolean isAll) {
-		String[] zips;
-		if (isAll) {
-			zips = new String[]{FILES, WORLDS, GAMES};
-		} else {
-			zips = new String[]{FILES, GAMES};
-		}
+		zips = getZipsFromAssets(this);
+		if (!isAll) zips.remove(WORLDS);
+		if (!isArm64()) zips.remove(CACHE);
 		copySub = Completable.fromAction(() -> runOnUiThread(() -> copyAssets(zips)))
 				.subscribeOn(Schedulers.io())
 				.observeOn(AndroidSchedulers.mainThread())
 				.subscribe(() -> startUnzipService(zips));
 	}
 
-	private void copyAssets(String[] zips) {
+	private void copyAssets(ArrayList<String> zips) {
 		for (String zipName : zips) {
-			String filename = FilenameUtils.getName(zipName);
-			try (InputStream in = getAssets().open(filename)) {
-				FileUtils.copyInputStreamToFile(in, new File(zipName));
+			try (InputStream in = getAssets().open("data/" + zipName)) {
+				FileUtils.copyInputStreamToFile(in, new File(getCacheDir(), zipName));
 			} catch (IOException e) {
-				Bugsnag.notify(e);
-				if (Objects.requireNonNull(e.getLocalizedMessage()).contains("ENOSPC"))
-					showRestartDialog("ENOSPC");
-				else showRestartDialog("UKNWN");
+				Bugsnag.leaveBreadcrumb("Failed to copy " + zipName);
+				if (e.getLocalizedMessage().contains(NO_SPACE_LEFT))
+					showRestartDialog(NO_SPACE_LEFT);
+				else {
+					showRestartDialog("");
+					Bugsnag.notify(e);
+				}
 			}
 		}
 	}
 
-	private void startUnzipService(String[] file) {
+	private void startUnzipService(ArrayList<String> file) {
 		Intent intent = new Intent(this, UnzipService.class);
-		intent.putExtra(UnzipService.EXTRA_KEY_IN_FILE, file);
+		intent.putStringArrayListExtra(UnzipService.EXTRA_KEY_IN_FILE, file);
 		startService(intent);
 	}
 
 	private void showRestartDialog(final String source) {
 		String message;
-		if ("ENOSPC".equals(source))
+		if (NO_SPACE_LEFT.equals(source))
 			message = getString(R.string.no_space);
 		else
 			message = getString(R.string.restart);
@@ -499,8 +464,7 @@ public class MainActivity extends AppCompatActivity implements CallBackListener 
 	private void startHandledActivity(Intent intent) {
 		try {
 			startActivityForResult(intent, REQUEST_CONNECTION);
-		} catch (ActivityNotFoundException e) {
-			Bugsnag.notify(e);
+		} catch (Exception e) {
 			startNative();
 		}
 	}
