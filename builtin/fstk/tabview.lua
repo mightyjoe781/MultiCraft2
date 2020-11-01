@@ -84,10 +84,13 @@ local function get_formspec(self)
 			local tsize = self.tablist[self.last_tab_index].tabsize or
 					{width=self.width, height=self.height}
 			formspec = formspec ..
-					string.format("size[%f,%f,%s]",tsize.width,tsize.height,
-						dump(self.fixed_size)) .. get_bg(tsize, tabname)
+					string.format("size[%f,%f,%s]",tsize.width,tsize.height+1,
+						dump(self.fixed_size)) .. get_bg(tsize, tabname) ..
+					self:button_header() ..
+					"container[0,1]"
+		else
+			formspec = formspec .. self:tab_header()
 		end
-		formspec = formspec .. self:tab_header()
 		formspec = formspec ..
 				self.tablist[self.last_tab_index].get_formspec(
 					self,
@@ -95,6 +98,9 @@ local function get_formspec(self)
 					self.tablist[self.last_tab_index].tabdata,
 					self.tablist[self.last_tab_index].tabsize
 					)
+		if self.parent == nil then
+			formspec = formspec .. "container_end[]"
+		end
 	end
 	return formspec
 end
@@ -171,6 +177,20 @@ local function tab_header(self)
 			self.header_x, self.header_y, self.name, toadd, self.last_tab_index);
 end
 
+
+--------------------------------------------------------------------------------
+local function button_header(self)
+
+	local toadd = ""
+
+	local x = (self.width - (#self.tablist * 1.75)) / 2
+	for i=1,#self.tablist,1 do
+		toadd = toadd .. "button[" .. x + (i - 1) * 1.75 .. ",0;2,0.8;" ..
+			self.name .. ":" .. i .. ";" .. self.tablist[i].caption .. "]"
+	end
+	return toadd
+end
+
 --------------------------------------------------------------------------------
 local function switch_to_tab(self, index)
 	--first call on_change for tab to leave
@@ -202,6 +222,16 @@ local function handle_tab_buttons(self,fields)
 		local index = tonumber(fields[self.name])
 		switch_to_tab(self, index)
 		return true
+	end
+
+	local s = self.name .. ':'
+	local n = #s
+	for field in pairs(fields) do
+		if field:sub(1, n) == s then
+			local index = tonumber(field:sub(n + 1))
+			switch_to_tab(self, index)
+			return true
+		end
 	end
 
 	return false
@@ -260,6 +290,7 @@ local tabview_metatable = {
 	set_fixed_size =
 			function(self,state) self.fixed_size = state end,
 	tab_header = tab_header,
+	button_header = button_header,
 	handle_tab_buttons = handle_tab_buttons
 }
 
