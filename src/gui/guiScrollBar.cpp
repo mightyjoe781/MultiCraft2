@@ -225,7 +225,8 @@ void GUIScrollBar::draw()
 			slider_rect, &AbsoluteClippingRect);
 	}
 
-	if (core::isnotzero(range())) {
+	// Always show scrollbar thumb
+	//if (core::isnotzero(range())) {
 		if (is_horizontal) {
 			slider_rect.UpperLeftCorner.X = AbsoluteRect.UpperLeftCorner.X +
 							draw_center - thumb_size / 2;
@@ -252,7 +253,7 @@ void GUIScrollBar::draw()
 		} else {
 			skin->draw3DButtonPaneStandard(this, slider_rect, &AbsoluteClippingRect);
 		}
-	}
+	//}
 
 	IGUIElement::draw();
 }
