@@ -69,9 +69,16 @@ void ServerModManager::loadMods(ServerScripting *script)
 		}
 		std::string script_path = mod.path + DIR_DELIM + "init.lua";
 		auto t = porting::getTimeMs();
+		size_t old_usage = script->getMemoryUsageKB();
 		script->loadMod(script_path, mod.name);
+		size_t new_usage = script->getMemoryUsageKB();
 		infostream << "Mod \"" << mod.name << "\" loaded after "
-			<< (porting::getTimeMs() - t) << " ms" << std::endl;
+			<< (porting::getTimeMs() - t) << " ms, ";
+		if (new_usage >= old_usage)
+			infostream << "using " << (new_usage - old_usage);
+		else
+			infostream << "somehow freeing " << (old_usage - new_usage);
+		infostream << "KB of memory" << std::endl;
 	}
 
 	// Run a callback when mods are loaded
