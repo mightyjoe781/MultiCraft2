@@ -7,10 +7,13 @@
 	<string name="preparing">Preparing to launch&#8230;</string>
 	<string name="loading">Loading&#8230;</string>
 	<string name="loadingp">Loading&#8230; %d%%</string>
+	<string name="migrating">Migrating save data from old install&#8230; (this may take a while)</string>
 	<string name="downloading">Downloading new version&#8230;</string>
 	<string name="downloadingp">Downloading new version&#8230; %d%%</string>
 	<string name="notification_title">Loading MultiCraft</string>
 	<string name="notification_description">Less than 1 minute&#8230;</string>
+	<string name="ime_dialog_done">Done</string>
+	<string name="no_external_storage">External storage isn\'t available. If you use an SDCard, please reinsert it. Otherwise, try restarting your phone or contacting the MultiCraft developers</string>
 	<string name="restart">Unexpected issue, the game will be restarted automatically</string>
 	<string name="no_space">No space left for game files, please free space in the memory</string>
 	<string name="ok" translatable="false">OK</string>
