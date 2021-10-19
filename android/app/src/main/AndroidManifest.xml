@@ -38,6 +38,8 @@
 		android:requestLegacyExternalStorage="true"
 		android:resizeableActivity="false"
 		android:roundIcon="@mipmap/ic_launcher_round"
+		android:hasFragileUserData="true"
+		android:isGame="true"
 		tools:ignore="UnusedAttribute">
 
 		<meta-data
