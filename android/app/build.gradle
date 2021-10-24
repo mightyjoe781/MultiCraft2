@@ -62,7 +62,7 @@ import org.apache.tools.ant.taskdefs.condition.Os
 
 task prepareAssetsFiles() {
 	def assetsFolder = "build/assets/Files"
-	def projRoot = "../../.."
+	def projRoot = "../.."
 
 	copy {
 		from "${projRoot}/builtin" into "${assetsFolder}/builtin" exclude '*.txt'
@@ -99,7 +99,7 @@ task prepareAssetsFiles() {
 
 task prepareAssetsGames() {
 	def assetsFolder = "build/assets/games"
-	def projRoot = "../../.."
+	def projRoot = "../.."
 	def gameToCopy = "default"
 
 	copy {
