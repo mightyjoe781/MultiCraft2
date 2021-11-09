@@ -322,6 +322,8 @@ inline const char *getPlatformName()
 // Touchscreen device specific function
 bool hasRealKeyboard();
 
+void handleError(const std::string &errType, const std::string &err);
+
 bool secure_rand_fill_buf(void *buf, size_t len);
 
 // This attaches to the parents process console, or creates a new one if it doesnt exist.

@@ -629,6 +629,10 @@ bool hasRealKeyboard()
 {
 	return false;
 }
+
+void handleError(const std::string &errType, const std::string &err) {
+	infostream << "handleError(): " << errType << ": " << err << std::endl;
+}
 #endif
 
 ////

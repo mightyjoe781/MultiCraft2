@@ -291,6 +291,20 @@ bool hasRealKeyboard()
 	return device_has_keyboard;
 }
 
+void handleError(const std::string &errType, const std::string &err) {
+	jmethodID report_err = jnienv->GetMethodID(nativeActivity,
+			"handleError", "(Ljava/lang/String;)V");
+
+	FATAL_ERROR_IF(report_err == nullptr,
+			"porting::handleError unable to find Java method");
+
+	std::ostringstream os;
+	os << errType << ": " << err;
+
+	jstring jerr = jnienv->NewStringUTF(os.str().c_str());
+	jnienv->CallVoidMethod(app_global->activity->clazz, report_err, jerr);
+}
+
 void notifyServerConnect(bool is_multiplayer)
 {
 	jmethodID notifyConnect = jnienv->GetMethodID(nativeActivity,
