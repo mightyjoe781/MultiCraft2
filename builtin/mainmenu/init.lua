@@ -79,7 +79,7 @@ local function main_event_handler(tabview, event)
 end
 
 --------------------------------------------------------------------------------
-local function init_globals()
+function menudata.init_tabs()
 	-- Init gamedata
 	gamedata.worldindex = 0
 
@@ -107,7 +107,7 @@ local function init_globals()
 	mm_texture.init()
 
 	-- Create main tabview
-	local tv_main = tabview_create("maintab", {x = 12, y = 5.4}, {x = 0, y = 0})
+	local tv_main = tabview_create("maintab", {x = 12, y = 5.4}, {x = 0.1, y = 0})
 
 	for i = 1, #pkgmgr.games do
 		if pkgmgr.games[i].id == "default" then
@@ -143,6 +143,10 @@ local function init_globals()
 		if last_tab and tv_main.current_tab ~= last_tab then
 			tv_main:set_tab(last_tab)
 		end
+
+		if last_tab ~= "local" and not core.settings:get_bool("menu_clouds") then
+			mm_texture.set_dirt_bg()
+		end
 	end
 
 	-- In case the folder of the last selected game has been deleted,
@@ -157,10 +161,9 @@ local function init_globals()
 	ui.set_default("maintab")
 	tv_main:show()
 
-	core.set_clouds(false)
-	mm_texture.set_dirt_bg()
+	core.set_clouds(core.settings:get_bool("menu_clouds"))
 
 	ui.update()
 end
 
-init_globals()
+menudata.init_tabs()
