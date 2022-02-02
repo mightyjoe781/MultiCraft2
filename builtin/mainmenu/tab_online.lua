@@ -100,14 +100,14 @@ local function get_formspec(tabview, name, tabdata)
 		end
 	end
 
-	--favourites
+	--favorites
 	retval = retval ..
 		"background9[-0.07,0.7;7.19,5.08;" ..
 			esc(defaulttexturedir) .. "worldlist_bg.png" .. ";false;40]" ..
 		"tableoptions[background=#0000;border=false]" ..
 		"tablecolumns[" ..
 		image_column(fgettext("Favorite")) .. ",align=center;" ..
-		image_column(fgettext("Lag")) .. ",padding=0.25;" ..
+		image_column(fgettext("Lag")) .. ",padding=0.5;" ..
 		"color,span=3;" ..
 		"text,align=right;" ..               -- clients
 		"text,align=center,padding=0.25;" .. -- "/"
