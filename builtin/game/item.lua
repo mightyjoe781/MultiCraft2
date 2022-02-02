@@ -548,13 +548,14 @@ function core.item_drop(itemstack, dropper, pos)
 			dir.z = vel.z + dir.z * 4
 			obj:set_velocity(dir)
 			obj:get_luaentity().dropped_by = dropper:get_player_name()
-		else
+		elseif not dropper then
 			obj:set_velocity({
 				x = random(-2, 2),
 				y = random(2, 4),
 				z = random(-2, 2)
 			})
 		end
+		-- Do nothing if the dropper is a fake_player
 		return itemstack
 	end
 	-- If we reach this, adding the object to the
