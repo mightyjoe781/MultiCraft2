@@ -47,9 +47,9 @@ Settings *Settings::createLayer(SettingsLayer sl, const std::string &end_tag)
 
 	Settings *&pos = s_layers[(size_t)sl];
 	if (pos)
-		throw BaseException("Setting layer " + std::to_string(sl) + " already exists");
-
-	pos = new Settings(end_tag);
+		errorstream << "Setting layer " << std::to_string(sl) << " already exists" << std::endl;
+	else
+		pos = new Settings(end_tag);
 	pos->m_settingslayer = sl;
 
 	if (sl == SL_GLOBAL)
